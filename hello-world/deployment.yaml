@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello-world-$ARGOCD_APP_REVISION	
+  name: hello-world
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hello-world
+      app: hello-world-$ARGOCD_APP_REVISION
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: hello-world
+        app: hello-world-$ARGOCD_APP_REVISION
     spec:
       containers:
       - image: nginxdemos/hello
