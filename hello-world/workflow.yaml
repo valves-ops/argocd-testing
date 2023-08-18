@@ -1,0 +1,69 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: argocd-workflow-test
+spec:
+  entrypoint: pipeline
+  #prepare a volume claim for the entire workflow
+  volumeClaimTemplates:
+    - metadata:
+        name: argocd-testing-repo
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+  #mount secrets for the workflow
+  volumes:
+    - name: git-secret
+      secret:
+        defaultMode: 256
+        secretName: git-creds # your-ssh-key
+    - name: kaniko-config
+      configMap:
+        name: kaniko-config
+
+  #start the sequence
+  templates:
+    - name: pipeline
+      steps:
+        - - name: check-repo
+            template: check-repo
+        - - name: build-docker
+            template: build-docker
+        #todo add other steps later
+
+    - name: check-repo
+    container:
+        image: alpine:latest
+        command: [sh, -c]
+        args:
+          [
+            "echo getting message from volume; ls /workdir/root/ > ls1.txt; cat ls1.txt; echo 'done 1'; ls /workdir/root/argocd-testing.git > ls.txt; cat ls.txt",
+          ]
+        volumeMounts:
+          - name: argocd-testing-repo
+            mountPath: /workdir ##
+          - name: git-secret
+            mountPath: /etc/git-secret ##
+
+      #this is the git fetch magic as an init container in the first step
+      initContainers:
+        - image: k8s.gcr.io/git-sync:v3.1.6
+          args:
+            - "--repo=git@github.com:valves-ops/argocd-testing.git"
+            - "--root=/workdir/root"
+            - "--max-sync-failures=3"
+            - "--timeout=200"
+            - "--branch=main"
+            - "--ssh"
+            - "--one-time"
+          name: git-data
+          volumeMounts:
+            - name: argocd-testing-repo
+              mountPath: /workdir ##
+            - name: git-secret
+              mountPath: /etc/git-secret
+
+      securityContext:
+        runAsUser: 0 # to allow read of ssh key
