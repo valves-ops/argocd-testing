@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  name: argocd-workflow-test
+  name: argocd-testing-pipeline
 spec:
   entrypoint: pipeline
   #prepare a volume claim for the entire workflow
@@ -29,12 +29,10 @@ spec:
       steps:
         - - name: check-repo
             template: check-repo
-        - - name: build-docker
-            template: build-docker
         #todo add other steps later
 
     - name: check-repo
-    container:
+      container:
         image: alpine:latest
         command: [sh, -c]
         args:
@@ -60,7 +58,7 @@ spec:
             - "--one-time"
           name: git-data
           volumeMounts:
-            - name: argocd-testing-repo
+            - name: bioprotocol-repo
               mountPath: /workdir ##
             - name: git-secret
               mountPath: /etc/git-secret
