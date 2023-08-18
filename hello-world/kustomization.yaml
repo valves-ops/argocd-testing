@@ -15,4 +15,4 @@ patches:
     patch: |-
       - op: replace
         path: /metadata/name
-        value: hello-friend
+        value: hello-friend-$ARGOCD_APP_REVISION
