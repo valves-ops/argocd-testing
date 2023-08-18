@@ -3,6 +3,8 @@ kind: Kustomization
 resources:
 - deployment.yaml
 - service.yaml
+- workflow.yaml
+- kaniko-config-map.yaml
 replicas:
 - name: hello-world
   count: 1
@@ -15,4 +17,4 @@ patches:
     patch: |-
       - op: replace
         path: /metadata/name
-        value: hello-friend-$ARGOCD_APP_REVISION
+        value: hello-world
