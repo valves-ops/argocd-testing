@@ -26,4 +26,4 @@ patches:
     patch: |-
       - op: replace
         path: /metadata/name
-        value: argocd-testing-pipeline-v1
+        value: argocd-testing-pipeline-v2
