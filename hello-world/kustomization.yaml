@@ -3,3 +3,6 @@ kind: Kustomization
 resources:
 - deployment.yaml
 - service.yaml
+replicas:
+- name: hello-world
+  count: 2
