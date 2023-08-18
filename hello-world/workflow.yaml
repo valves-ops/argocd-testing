@@ -58,7 +58,7 @@ spec:
             - "--one-time"
           name: git-data
           volumeMounts:
-            - name: bioprotocol-repo
+            - name: argocd-testing-repo
               mountPath: /workdir ##
             - name: git-secret
               mountPath: /etc/git-secret
