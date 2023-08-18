@@ -18,3 +18,12 @@ patches:
       - op: replace
         path: /metadata/name
         value: hello-world
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Workflow
+      name: argocd-testing-pipeline
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: argocd-testing-pipeline-v1
