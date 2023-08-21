@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: kaniko-config
-  namespace: bioprotocol
+  namespace: hello-world
 data:
   config.json: |-
     {}
