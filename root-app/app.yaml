@@ -3,11 +3,13 @@ kind: Application
 metadata:
   name: root-app
   namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
     repoURL: 'https://github.com/valves-ops/argocd-testing'
-    path: root-app
+    path: apps
     targetRevision: main
   destination:
     server: 'https://kubernetes.default.svc'
