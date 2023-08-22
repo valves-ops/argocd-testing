@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: hello-world
   namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: registry-service.docker-registry.svc.cluster.local:5000/nginx-custom
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
 spec:
   project: default
   source:
