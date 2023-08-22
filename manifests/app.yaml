@@ -6,7 +6,7 @@ metadata:
 project: default
 source:
   repoURL: 'https://github.com/valves-ops/argocd-testing'
-  path: hello-world
+  path: manifests
   targetRevision: main
 destination:
   server: 'https://kubernetes.default.svc'
