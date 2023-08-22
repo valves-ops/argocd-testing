@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: hello-world
-  namespace: hello-world
+  name: root-app
+  namespace: argocd
 spec:
   project: default
   source:
     repoURL: 'https://github.com/valves-ops/argocd-testing'
-    path: hello-world/manifests
+    path: ''
     targetRevision: main
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: hello-world
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true
