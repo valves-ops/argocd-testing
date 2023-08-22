@@ -3,17 +3,18 @@ kind: Application
 metadata: 
   name: hello-world
   namespace: hello-world
-project: default
-source:
-  repoURL: 'https://github.com/valves-ops/argocd-testing'
-  path: hello-world/manifests
-  targetRevision: main
-destination:
-  server: 'https://kubernetes.default.svc'
-  namespace: hello-world
-syncPolicy:
-  automated:
-    prune: true
-    selfHeal: true
-  syncOptions:
-    - CreateNamespace=true
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/valves-ops/argocd-testing'
+    path: hello-world/manifests
+    targetRevision: main
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: hello-world
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
