@@ -16,7 +16,7 @@ spec:
         app: hello-world
     spec:
       containers:
-      - image: nginx-custom
+      - image: registry-service.docker-registry.svc.cluster.local:5000/nginx-custom
         name: hello-world
         resources:
           requests:
