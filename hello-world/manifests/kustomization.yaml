@@ -8,22 +8,3 @@ resources:
 replicas:
 - name: hello-world
   count: 1
-patches:
-  - target:
-      group: apps
-      version: v1
-      kind: Deployment
-      name: hello-world
-    patch: |-
-      - op: replace
-        path: /metadata/name
-        value: hello-world
-  - target:
-      group: argoproj.io
-      version: v1alpha1
-      kind: Workflow
-      name: argocd-testing-pipeline
-    patch: |-
-      - op: replace
-        path: /metadata/name
-        value: argocd-testing-pipeline-v2
