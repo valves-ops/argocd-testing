@@ -1,0 +1,3 @@
+kustomize:
+  images:
+  - registry-service.docker-registry.svc.cluster.local:5000/nginx-custom:4f43999cca71c05b7439810f74b3f932b29832d7
