@@ -11,7 +11,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'ssh://git@github.com:valves-ops/argocd-testing.git'
+    repoURL: 'ssh://git@github.com/valves-ops/argocd-testing.git'
     path: hello-world/manifests
     targetRevision: main
   destination:
