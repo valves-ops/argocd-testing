@@ -1,67 +1,144 @@
 apiVersion: argoproj.io/v1alpha1
-kind: Workflow
+kind: CronWorkflow
 metadata:
-  name: argocd-testing-pipeline
+  generateName: git-change-detection-
+  namespace: hello-world
 spec:
-  entrypoint: pipeline
-  #prepare a volume claim for the entire workflow
-  volumeClaimTemplates:
-    - metadata:
-        name: argocd-testing-repo
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 1Gi
-  #mount secrets for the workflow
-  volumes:
-    - name: git-secret
-      secret:
-        defaultMode: 256
-        secretName: git-creds # your-ssh-key
-    - name: kaniko-config
-      configMap:
-        name: kaniko-config
-
-  #start the sequence
-  templates:
-    - name: pipeline
+  schedule: "*/3 * * * *"
+  workflowSpec:
+    entrypoint: build
+    volumeClaimTemplates:
+      - metadata:
+          name: source-artifact
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+    volumes:
+      - name: kaniko-config
+        configMap:
+          name: kaniko-config
+      - name: previous-commit-hash-artifact
+        persistentVolumeClaim:
+          claimName: previous-commit-hash-artifact-pvc
+    templates:
+    - name: build
       steps:
-        - - name: check-repo
-            template: check-repo
-        #todo add other steps later
-
+      - - name: check-repo
+          template: check-repo
+      - - name: build-and-push-image
+          template: build-and-push-image
+          arguments:
+            parameters:
+            - name: current-commit-hash
+              value: "{{steps.check-repo.outputs.parameters.current-commit-hash}}"
+          when: >-
+            (
+              '{{steps.check-repo.outputs.parameters.current-commit-hash}}' != '{{steps.check-repo.outputs.parameters.previous-commit-hash}}'
+            ) && (
+              '{{steps.check-repo.outputs.parameters.last-commit-author}}' != 'argocd-image-updater'
+            ) 
+      - - name: update-previous-commit-hash
+          template: update-previous-commit-hash
+          arguments:
+            parameters:
+            - name: current-commit-hash
+              value: "{{steps.check-repo.outputs.parameters.current-commit-hash}}"
     - name: check-repo
+      inputs:
+        artifacts:
+        - name: source
+          path: /src
+          git:
+            repo: git@github.com:valves-ops/argocd-testing.git
+            revision: "main"
+            sshPrivateKeySecret:
+              name: git-private-key
+              key: sshPrivateKey
+      script:
+        image: bitnami/git
+        command: [bash]
+        source: |
+          ls /src
+          echo "Copying content of /src to /output_artifact"
+          cp -a /src/* /output_artifact
+          echo "Listing contents of /output_artifact"
+          ls /output_artifact
+          mkdir -p /current
+          # touch /current/commit_hash.txt
+          cd /src
+          # echo "\"$(git rev-parse HEAD)\"" > /current/commit_hash.txt
+          echo "$(git rev-parse HEAD)" > /current/commit_hash.txt
+          echo "Current commit hash:"
+          cat /current/commit_hash.txt
+          touch /previous/commit_hash.txt # create file if it doesnt exist
+          [ ! -s /previous/commit_hash.txt ] && echo "00000" > /previous/commit_hash.txt  # write non-hash if empty file
+          echo "Previous commit hash:"
+          cat /previous/commit_hash.txt
+          echo "$(git log -1 --pretty=format:'%an')" > /last_commit_author.txt
+        volumeMounts:
+            - name: source-artifact
+              mountPath: /output_artifact
+            - name: previous-commit-hash-artifact
+              mountPath: /previous
+      outputs:
+        parameters:
+        - name: current-commit-hash
+          valueFrom:
+            path: /current/commit_hash.txt
+        - name: previous-commit-hash
+          valueFrom:
+            path: /previous/commit_hash.txt
+        - name: last-commit-author
+          valueFrom:
+            path: /last_commit_author.txt
+    - name: build-and-push-image
+      inputs:
+        parameters:
+        - name: current-commit-hash
       container:
-        image: alpine:latest
-        command: [sh, -c]
+        image: gcr.io/kaniko-project/executor:v1.9.0-debug
+        imagePullPolicy: Always
+        # command: [sh]
+        # script: |
+        #   export IMAGE_TAG=$(echo '{{inputs.parameters.current-commit-hash}}' | tr -d '\"')
+        #   echo "IMAGE_TAG: $IMAGE_TAG"
+        #   export IMAGE_DESTINATION="registry-service.docker-registry.svc.cluster.local:5000/nginx-custom:$IMAGE_TAG"
+        #   echo "IMAGE_DESTINATION: $IMAGE_DESTINATION"
+        #   /kaniko/executor --dockerfile=/workdir/Dockerfile --context=/workdir --destination=$IMAGE_DESTINATION --skip-tls-verify --cache=false
+        command: ["/kaniko/executor"]
         args:
           [
-            "echo getting message from volume; ls /workdir/root/ > ls1.txt; cat ls1.txt; echo 'done 1'; ls /workdir/root/argocd-testing.git > ls.txt; cat ls.txt",
+            "--dockerfile=/workdir/Dockerfile",
+            "--context=/workdir",
+            "--destination=registry-service.docker-registry.svc.cluster.local:5000/nginx-custom:{{inputs.parameters.current-commit-hash}}",
+            "--skip-tls-verify",
+            "--cache=false",
           ]
         volumeMounts:
-          - name: argocd-testing-repo
-            mountPath: /workdir ##
-          - name: git-secret
-            mountPath: /etc/git-secret ##
-
-      #this is the git fetch magic as an init container in the first step
-      initContainers:
-        - image: k8s.gcr.io/git-sync:v3.1.6
-          args:
-            - "--repo=git@github.com:valves-ops/argocd-testing.git"
-            - "--root=/workdir/root"
-            - "--max-sync-failures=3"
-            - "--timeout=200"
-            - "--branch=main"
-            - "--ssh"
-            - "--one-time"
-          name: git-data
-          volumeMounts:
-            - name: argocd-testing-repo
-              mountPath: /workdir ##
-            - name: git-secret
-              mountPath: /etc/git-secret
-
-      securityContext:
-        runAsUser: 0 # to allow read of ssh key
+          - name: kaniko-config
+            mountPath: /kaniko/.docker/
+          - name: source-artifact
+            mountPath: /workdir
+        resources:
+          limits:
+            cpu: 1
+            memory: 5Gi
+    - name: update-previous-commit-hash
+      inputs:
+        parameters:
+        - name: current-commit-hash
+      script:
+        image: debian
+        command: [bash]
+        source: |
+          echo "Previous commit hash:"
+          cat /previous/commit_hash.txt
+          # echo "\"{{inputs.parameters.current-commit-hash}}\"" > /previous/commit_hash.txt
+          echo "{{inputs.parameters.current-commit-hash}}" > /previous/commit_hash.txt
+          echo "Updated previous commit hash:"
+          cat /previous/commit_hash.txt
+        volumeMounts:
+            - name: previous-commit-hash-artifact
+              mountPath: /previous
