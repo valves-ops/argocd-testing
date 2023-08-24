@@ -2,6 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: CronWorkflow
 metadata:
   generateName: git-change-detection-
+  name: git-change-detection
   namespace: hello-world
 spec:
   schedule: "*/3 * * * *"
